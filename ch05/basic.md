@@ -72,3 +72,73 @@ scanf("%s", s)
     * 복사할 수 있는 최대 글자 수는 sizeof(s) - strlen(s) - 1
 - strcmp = string compare
   + 일치할 경우 0, 앞 문자열이 사전순으로 빠를 경우 음수, 늦을 경우 양수
+
+## 포인터(pointer)
+- 변수의 주소를 저장하는 변수
+```cpp
+#include <stdio.h>
+
+int main() {
+  int a = 20;
+  
+  // 일반 변수와 구분하기 위에 *를 붙임.
+  // 가리킬 변수의 형과 통일.
+  int *ptr_a;
+  
+  // & : 주소값 > &a : a의 주소값
+  ptr_a = &a;
+  
+  printf("a의 값 : %d\n", a); // 20
+  printf("a의 주솟값 : %d\n", &a); // 1636216
+  printf("ptr_a에 저장된 값 : %d\n", ptr_a); // 1636216 
+  printf("ptr_a가 가리키는 변수의 값 : %d\n", *ptr_a); // 20
+}
+```
+### 포인터의 *
+- 포인터를 선언할 때(또는 초기화 할 때)
+```cpp
+int *ptr_a;
+```
+- 포인터 자체를 의미할 때는 *를 쓰지 않는다.
+```cpp
+ptr_a;
+```
+- 포인터가 가리키는 변수를 의미할 때는 *를 쓴다.
+```cpp
+*ptr_a;
+```
+### 더블 포인터
+```cpp
+#include <stdio.h>
+
+int main() {
+  int a = 10;
+  
+  int *ptr;
+  ptr = &a;
+
+  int **ptr_ptr;
+  ptr_ptr = &ptr;
+
+  printf("a = %d\n", a); // 10
+  printf("&a = %d\n", &a);  // 1636216
+  printf("ptr = %d\n", ptr);  // 1636216
+  printf("&ptr = %d\n", &ptr); // 1834528
+  printf("ptr_ptr = %d\n", ptr_ptr); // 1834528
+}
+```
+### 배열 포인터
+```cpp
+int (*p_arr)[10];
+
+// p_arr이 가리키는 배열의 i번 칸(주소)
+(*p_arr)[i]
+
+// p_arr의 i번 칸이 가리키는 대상
+*p_arr[i]
+```
+### 포인터 배열
+- 포인터들로 이루어진 배열
+```cpp
+  int *ptr[3];
+```
