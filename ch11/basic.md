@@ -355,3 +355,271 @@ int main() {
 - c++에는 리턴 값을 저장하는 특별한 공간 = 임시 객체가 존재
   - 함수의 지역 객체가 아니기 때문에 함수가 종료되면 res는 사라지지만 임시 객체는 사라지지 않고 임시 객체에서 a로 복사된다.
 - 위 예제처럼 return 값이 존재하여 res도 더 이상 쓰지 않고 사라질 객체이고 임시 객체도 a에 대입된 후에는 사라질 객체이기 때문에 원본 객체는 복사 직후에 바로 소멸될 객체이므로 얕은 복사를 해주어도 문제가 되지 않는다.
+
+#### 이동 생성자와 이동 대입 연산자 오버로딩
+```cpp
+// 이동 시맨틱
+class String {
+  public:
+    //...
+    // 이동 생성자
+    String(String &&rhs) {
+      cout << "String(String&&) : " << this << endl;
+      len = rhs.len;
+      strData = rhs.strData;
+      rhs.strData = NULL;
+    }
+    // 이동 대입 연산자
+    String &operator=(String &&rhs) {
+      cout << "String &operator=(String &&rhs) : " << this << endl;
+      len = rhs.len;
+      strData = rhs.strData;
+      rhs.strData = NULL;
+      return *this;
+    }
+}
+```
+- 위 예제 코드는 얕은 복사가 일어난다.
+만약, rhs.strData = NULL; 구문이 없을 경우 s2는 s1에서 얕은 복사가 일어나고 s1가 소멸하면서 해당 데이터도 함께 소멸되고 이 공간을 바라보고 있는 s2의 데이터가 사라지게 되는 꼴이기 때문에 s1이 소멸되기 전 s1이 가리키고 있는 공간을 NULL처리 해주면서 해제해주는 과정이 필요하다. = 이동
+#### 최종 코드
+```cpp
+class String {
+  public:
+    // 아무런 매개변수도 받지 않는다.
+    String() {
+      cout << "String() : " << this << endl;
+      strData = NULL;
+      len = 0;
+    }
+    // 포인터 형태의 문자열을 받고 있다.
+    String(const char *str) {
+      cout << "String(const char*) : " << this << endl;
+      // 1. strlen 함수를 사용해 문자열의 길이를 알아내고
+      // 2. len에 그 길이를 저장
+      len = strlen(str);
+      // 3. 문자열을 저장할 공간을 동적 할당(NULL 문자 때문에 문자열의 길이보다 한 칸 많은 공간을 할당해야함.)
+      alloc(len);
+      // 4. strcpy를 사용해 strData에 str 복사.
+      strcpy(strData, str); // 깊은 복사
+    }
+    // 복사 생성자
+    String(const String &rhs) { 
+      cout << "String(const String&) : " << this << endl;
+      len = rhs.len;
+      alloc(len);
+      strcpy(strData, rhs.strData);
+    }
+
+    // 이동 생성자
+    String(String &&rhs) {
+      cout << "String(String&&) : " << this << endl;
+      len = rhs.len;
+      strData = rhs.strData;
+      rhs.strData = NULL;
+    }
+
+    // 소멸자
+    ~String() {
+      cout << "~String() : " << this << endl;
+      relase();
+      strData = NULL;
+    }
+
+    // 복사 대입 연산자
+    String &operator=(const String &rhs) {
+      if (this != &rhs) {
+        relase();
+        len = rhs.len;
+        alloc(len);
+        strcpy(strData, rhs.strData);
+      }
+      return *this;
+    }
+
+    // 이동 대입 연산자
+    String &operator=(String &&rhs) {
+      cout << "String &operator=(String &&rhs) : " << this << endl;
+      len = rhs.len;
+      strData = rhs.strData;
+      rhs.strData = NULL;
+      return *this;
+    }
+
+    const char* GetStrData() const {
+      return strData;
+    }
+    int GetLen() const {
+      return len;
+    }
+
+  private:
+    void alloc(int len) {
+      strData = new char[len + 1];
+      cout << "strData 할당됨 : " << (void*)strData << endl;
+    }
+    void release() {
+      if (strData) cout << "strData 해제됨 : " << (void*)strData << endl;
+      delete[] strData;
+    }
+    // C스타일 문자열(널 문자로 끝나는 char배열)을 동적 할당 후 포인터로 가리킴.
+    char *strData;
+    // 문자열의 길이
+    int len;
+}
+
+String getName() {
+  cout << " ==== 2 ==== " << endl;
+  String res("Doodle");
+  cout << "==== 3 ====" << endl;
+  return res;
+}
+
+int main() {
+ String a;
+ cout << "==== 1 ====" << endl;
+ a = getName();
+ cout << "==== 4 ====" << endl;
+}
+```
+## 묵시적 형변환
+```cpp
+int a = 5;
+double b = a;
+```
+### 명시적 형변환
+```cpp
+double b = (double)a;
+```
+#### 예제 코드
+```cpp
+class Item {
+  public:
+    Item() {
+      cout << "Item()" << endl;
+    }
+    Item(int num): num(num) {
+      cout << "Item(int)" << endl;
+    }
+    Item(string name): name(name) {
+      cout << "Item(string)" << endl;
+    }
+    Item(int num, string name): num(num), name(name) {
+      cout << "Item(int, string)" << endl;
+    }
+  private:
+    int num;
+    string name;
+};
+
+int main() {
+  cout << "=== a ===" << endl;
+  Item a1 = Item(1); // Item(int)
+  Item a2(2); // Item(int)
+  // 다른 타입에서 어떤 클래스로의 형변환이 그 클래스의 생성자를 통해 가능하다.
+  Item a3 = (Item)3; // = Item(3) > Item(int)
+
+  // 묵시적 형변환
+  Item a4 = 4; // = Item a4(4) > Item(int)
+
+  Item a5, a6, a7; // 기본 Item(), Item(), Item()
+  // 우변의 객체가 생성된 후 대입 연산이 수행되며 우변의 객체는 대입이 끝나면 사라져 이 때의 대입 연산의 종류는 이동이다.
+  a5 = Item(5); // Item(int)
+
+  // 묵시적 형변환
+  a6 = 6; // a4와 동일한 이치 > Item(int)
+
+  a7 = (Item)7; // a3와 동일한 이치 > Item(int)
+
+  cout << "=== b ===" << endl;
+  Item b4 = string("stone");
+
+  cout << "=== c ===" << endl;
+  Item c1 = Item(1, "stone"); // Item(int, string)
+  Item c2(2, "dirt"); // Item(int, string)
+  // 리스트 초기화
+  Item c4 = {3, "wood"}; // Item(int, string)
+  Item c5, c6; // Item(), Item()
+  c5 = Item(4, "grass"); // Item(int, string)
+  c6 = { 5, "water"}; // Item(int, string)
+}
+```
+- 묵시적 형변환 : 등호의 우변이 Item 타입이 아니지만 컴파일러가 알아서 변환해준다.
+- 변환 생성자 : 명시적 형변환에서 우변의 타입을 좌변으로 변환하려 할 때만 생성.
+
+### 형변환 연산자 오버로딩
+- 어떤 클래스에서 다른 타입으로 형변환할 수 있게 만들어주는 방법
+```cpp
+class Item {
+  public:
+    ...
+    operator int() const {
+      return num;
+    }
+    operator string() const {
+      return name;
+    }
+
+  private:
+    ...
+};
+```
+- return type이 없는 이유 : 해당 타입으로 형변환을 시켜 주는 것인데 타입이 다를리 없으므로.
+- 매개변수가 없는 이유 : 형변환 시에는 본인 자신 외에는 특별히 받을 값이 없으므로.
+- const가 붙는 이유 : 형변환을 하는 동안 자기 자신이 변하면 안되기 때문.
+
+#### 최종 코드
+```cpp
+class Item {
+  public:
+    Item() {}
+    Item(int num): num(num) {}
+    Item(string name): name(name) {}
+    Item(int num, string name): num(num), name(name) {}
+    operator int() const {
+      cout << "Item::operator int()" << endl;
+      return num;
+    }
+    operator string() const {
+      cout << "Item::operator string()" << endl;
+      return name;
+    }
+    
+  private:
+    int num;
+    string name;
+};
+
+int main() {
+  Item i1(1, "stone");
+  int inum = i1;
+  string iname = i1;
+
+  cout << inum << endl; // 1
+  cout << iname << endl; // stone
+}
+```
+
+## explict
+- 묵시적 형변환이 일어나지 못하도록 생성자는 놔두면서 정상적으로 컴파일되는 것만 막을 수 있는 방법
+- 해당 키워드가 붙을 시 형변환을 목적으로 하는 생성자가 아니고 만약 형변환을 하더라도 명시적 형변환만 허용함.
+```cpp
+class Item {
+  public:
+    Item() {}
+    explict Item(int num): num(num) {}
+    explict Item(string name): name(name) {}
+    explict Item(int num, string name): num(num), name(name) {}
+    
+  private:
+    int num;
+    string name;
+};
+
+int main() {
+  Item i1 = 1 // error : 묵시적 형변환 불가
+  Item i2(2); // 생성자만 호출
+  Item i3 = (Item)3; // 명시적 형변형
+  Item i4 = { 2, "dirt"} // error : 묵시적 형변환 불가
+  Item i5(2, "dirt")
+}
+```
